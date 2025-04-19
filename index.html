@@ -1,116 +1,95 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Griot Airdrop</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Inter', sans-serif;
-      background-color: #000;
-      color: #0f0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 20px;
+import { useEffect, useState } from "react";
+import { ethers } from "ethers";
+import { Button } from "@/components/ui/button";
+
+const CONTRACT_ADDRESS = "0x72c...a258f"; // Your deployed GriotAirdrop contract
+const TOKEN_ADDRESS = "0xa1F222A5503Be486D9d46B3E77EF83cBa8C6f5Ff"; // Griot token contract
+
+const ABI = [
+  "function claim() external",
+  "function hasClaimed(address) view returns (bool)",
+  "function owner() view returns (address)",
+  "function claimAmount() view returns (uint256)"
+];
+
+export default function Home() {
+  const [provider, setProvider] = useState(null);
+  const [signer, setSigner] = useState(null);
+  const [address, setAddress] = useState(null);
+  const [contract, setContract] = useState(null);
+  const [hasClaimed, setHasClaimed] = useState(null);
+  const [claiming, setClaiming] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
+  const [claimAmount, setClaimAmount] = useState(null);
+
+  useEffect(() => {
+    if (signer && address && contract) {
+      (async () => {
+        const claimed = await contract.hasClaimed(address);
+        setHasClaimed(claimed);
+        const owner = await contract.owner();
+        setIsOwner(owner.toLowerCase() === address.toLowerCase());
+        const amount = await contract.claimAmount();
+        setClaimAmount(ethers.utils.formatEther(amount));
+      })();
     }
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 1rem;
+  }, [signer, address, contract]);
+
+  const connectWallet = async () => {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    const signer = provider.getSigner();
+    const address = await signer.getAddress();
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+    setProvider(provider);
+    setSigner(signer);
+    setAddress(address);
+    setContract(contract);
+  };
+
+  const claimTokens = async () => {
+    try {
+      setClaiming(true);
+      const tx = await contract.claim();
+      await tx.wait();
+      setHasClaimed(true);
+    } catch (err) {
+      alert("Claim failed: " + err.message);
+    } finally {
+      setClaiming(false);
     }
-    button {
-      background-color: #0f0;
-      color: #000;
-      border: none;
-      padding: 12px 24px;
-      font-size: 1rem;
-      border-radius: 8px;
-      cursor: pointer;
-      margin: 10px;
-      width: 100%;
-      max-width: 300px;
-    }
-    button:disabled {
-      background-color: #444;
-      color: #888;
-      cursor: not-allowed;
-    }
-    #status {
-      margin: 20px;
-      font-size: 1rem;
-      text-align: center;
-    }
-    @media (max-width: 600px) {
-      h1 { font-size: 1.5rem; }
-    }
-  </style>
-</head>
-<body>
-  <h1>🎤 Griot Airdrop</h1>
-  <div id="status">Connect your wallet to check eligibility.</div>
-  <button id="connectButton">Connect Wallet</button>
-  <button id="claimButton" disabled>Claim Tokens</button>
+  };
 
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <script>
-    const contractAddress = '0xYourGriotAirdropContractAddress';
-    const abi = [
-      'function hasClaimed(address) view returns (bool)',
-      'function claim() public',
-      'function claimAmount() view returns (uint256)'
-    ];
+  return (
+    <main className="min-h-screen bg-black text-green-400 p-4 flex flex-col items-center justify-center text-center space-y-6">
+      <h1 className="text-3xl font-bold">🎤 Griot Airdrop</h1>
+      {!address ? (
+        <Button onClick={connectWallet} className="bg-green-500 hover:bg-green-600 text-black px-6 py-2 rounded-2xl">
+          Connect Wallet
+        </Button>
+      ) : (
+        <div className="space-y-4">
+          <p className="text-lg">Connected: {address}</p>
+          {hasClaimed ? (
+            <p className="text-red-400">You’ve already claimed your {claimAmount} Griot tokens.</p>
+          ) : (
+            <Button
+              onClick={claimTokens}
+              disabled={claiming}
+              className="bg-green-500 hover:bg-green-600 text-black px-6 py-2 rounded-2xl disabled:opacity-50">
+              {claiming ? "Claiming..." : `Claim ${claimAmount || "your"} Griot Tokens`}
+            </Button>
+          )}
 
-    const connectButton = document.getElementById('connectButton');
-    const claimButton = document.getElementById('claimButton');
-    const status = document.getElementById('status');
-    let provider, signer, contract, userAddress;
-
-    connectButton.onclick = async () => {
-      if (typeof window.ethereum === 'undefined') {
-        return alert('MetaMask is required!');
-      }
-
-      provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send('eth_requestAccounts', []);
-      signer = provider.getSigner();
-      userAddress = await signer.getAddress();
-
-      contract = new ethers.Contract(contractAddress, abi, signer);
-
-      status.innerText = `Connected: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
-      checkEligibility();
-    };
-
-    async function checkEligibility() {
-      try {
-        const claimed = await contract.hasClaimed(userAddress);
-        if (claimed) {
-          claimButton.disabled = true;
-          status.innerText = 'You already claimed your Griot tokens. ✊🏾';
-        } else {
-          claimButton.disabled = false;
-          status.innerText = 'You are eligible to claim! 🎉';
-        }
-      } catch (e) {
-        console.error(e);
-        status.innerText = 'Could not verify claim eligibility.';
-      }
-    }
-
-    claimButton.onclick = async () => {
-      try {
-        const tx = await contract.claim();
-        status.innerText = 'Transaction sent. Waiting for confirmation...';
-        await tx.wait();
-        status.innerText = 'Success! Griot tokens claimed! 🎁';
-        claimButton.disabled = true;
-      } catch (e) {
-        console.error(e);
-        status.innerText = 'Claim failed. Check console for details.';
-      }
-    };
-  </script>
-</body>
-</html>
+          {isOwner && (
+            <div className="text-sm text-white mt-4">
+              <p>You are the contract owner. 🎯</p>
+              <p>Monitor, update, or manage your drop from here in the future.</p>
+            </div>
+          )}
+        </div>
+      )}
+    </main>
+  );
+}
