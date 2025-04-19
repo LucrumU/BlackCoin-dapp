@@ -1,42 +1,46 @@
-const connectBtn = document.getElementById("connectBtn");
-const walletAddress = document.getElementById("walletAddress");
-const claimBtn = document.getElementById("claimBtn");
-const claimStatus = document.getElementById("claimStatus");
+const contractAddress = "0xa1f222a5503be486d9d46b3e77ef83cba8c6f5ff";
+const abi = [
+  {
+    "inputs": [],
+    "name": "claimAirdrop",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+];
 
-let accounts;
+let provider;
+let signer;
+let contract;
 
-// Black Coin contract address (already deployed)
-const blackCoinAddress = "0xd4377067d66355EaaCa05ea319CBaf261adf102a";
-
-// Example Griots airdrop contract (you’ll replace this with your claim logic later)
-let claimedWallets = new Set();
-
-connectBtn.onclick = async () => {
-  if (typeof window.ethereum !== "undefined") {
+async function connectWallet() {
+  if (window.ethereum) {
     try {
-      accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-      walletAddress.innerText = `Connected: ${accounts[0]}`;
-    } catch (error) {
-      walletAddress.innerText = "Connection denied.";
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      contract = new ethers.Contract(contractAddress, abi, signer);
+
+      const address = await signer.getAddress();
+      document.getElementById("wallet-address").innerText = `Wallet: ${address}`;
+    } catch (err) {
+      console.error("Connection error:", err);
     }
   } else {
-    walletAddress.innerText = "MetaMask not found. Install it to continue.";
+    alert("Please install MetaMask.");
   }
-};
+}
 
-claimBtn.onclick = () => {
-  if (!accounts || accounts.length === 0) {
-    claimStatus.innerText = "Connect wallet first!";
-    return;
+async function claimTokens() {
+  if (!contract) return alert("Connect wallet first!");
+
+  try {
+    const tx = await contract.claimAirdrop();
+    document.getElementById("status").innerText = "Claiming tokens...";
+    await tx.wait();
+    document.getElementById("status").innerText = "Tokens claimed successfully!";
+  } catch (err) {
+    console.error(err);
+    document.getElementById("status").innerText = "Error claiming tokens.";
   }
-
-  const user = accounts[0].toLowerCase();
-
-  if (claimedWallets.has(user)) {
-    claimStatus.innerText = "You’ve already claimed your free Griots.";
-  } else {
-    claimedWallets.add(user);
-    claimStatus.innerText = "🎉 Success! Griots have been sent (simulated).";
-    // This is where you'd trigger a smart contract call or backend airdrop
-  }
-};
+}
