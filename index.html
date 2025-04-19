@@ -1,23 +1,74 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Black Coin DApp</title>
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+  <title>Griot Airdrop</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
 </head>
-<body>
-  <div class="container">
-    <h1>Black Coin Wallet</h1>
-    <button id="connectBtn">Connect Wallet</button>
-    <p id="walletAddress"></p>
+<body style="font-family: Arial; text-align: center; padding: 40px;">
+  <h1>Griot Airdrop DApp</h1>
 
-    <h2>🎁 Claim Free Griots</h2>
-    <button id="claimBtn">Claim Now</button>
-    <p id="claimStatus"></p>
-  </div>
+  <button id="connectButton">Connect Wallet</button>
+  <button id="claimButton" disabled>Claim Griot</button>
 
-  <script src="script.js"></script>
+  <p id="status"></p>
+
+  <script>
+    const contractAddress = "0x72C1c729D5561b1126A72A2523Db3a27045a258F";
+    const contractABI = [
+      {
+        "inputs": [],
+        "name": "claim",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "hasClaimed",
+        "outputs": [{"internalType": "bool","name":"","type": "bool"}],
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ];
+
+    let web3;
+    let account;
+    let griotContract;
+
+    const connectButton = document.getElementById("connectButton");
+    const claimButton = document.getElementById("claimButton");
+    const statusText = document.getElementById("status");
+
+    connectButton.onclick = async () => {
+      if (typeof window.ethereum !== "undefined") {
+        web3 = new Web3(window.ethereum);
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+        const accounts = await web3.eth.getAccounts();
+        account = accounts[0];
+        griotContract = new web3.eth.Contract(contractABI, contractAddress);
+        statusText.textContent = "Wallet connected: " + account;
+        claimButton.disabled = false;
+      } else {
+        statusText.textContent = "Please install MetaMask!";
+      }
+    };
+
+    claimButton.onclick = async () => {
+      try {
+        const hasClaimed = await griotContract.methods.hasClaimed().call({ from: account });
+        if (hasClaimed) {
+          statusText.textContent = "You've already claimed your Griot.";
+          return;
+        }
+
+        statusText.textContent = "Claiming...";
+        await griotContract.methods.claim().send({ from: account });
+        statusText.textContent = "Success! Griot claimed.";
+      } catch (error) {
+        console.error(error);
+        statusText.textContent = "Error: " + (error.message || "Transaction failed.");
+      }
+    };
+  </script>
 </body>
 </html>
