@@ -1,9 +1,10 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import { ethers } from "ethers";
-import { Button } from "@/components/ui/button";
 import Image from "next/image";
 
-const CONTRACT_ADDRESS = "0x72c...a258f"; // Replace with full GriotAirdrop contract address
+const CONTRACT_ADDRESS = "0x72C55723276dE8Ad657f967f31b58E7A531a258f";
 const ABI = [
   "function claim() external",
   "function hasClaimed(address) view returns (bool)",
@@ -21,6 +22,7 @@ export default function Home() {
   const [isOwner, setIsOwner] = useState(false);
   const [claimAmount, setClaimAmount] = useState(null);
 
+  // Redirect if mobile and no MetaMask
   useEffect(() => {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     if (isMobile && !window.ethereum) {
@@ -28,6 +30,7 @@ export default function Home() {
     }
   }, []);
 
+  // Update on connect
   useEffect(() => {
     if (signer && address && contract) {
       (async () => {
@@ -41,6 +44,7 @@ export default function Home() {
     }
   }, [signer, address, contract]);
 
+  // Connect wallet
   const connectWallet = async () => {
     try {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -57,6 +61,7 @@ export default function Home() {
     }
   };
 
+  // Claim
   const claimTokens = async () => {
     try {
       setClaiming(true);
@@ -72,25 +77,33 @@ export default function Home() {
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-black text-green-400 p-4">
-      <Image src="/black-bank-logo.png" alt="Griot Bank Logo" width={100} height={100} className="mb-4" />
-      <h1 className="text-2xl font-bold mb-4">Griot Airdrop</h1>
+      <Image src="/black-bank-logo.png" alt="Bank Logo" width={100} height={100} className="mb-4 rounded-xl" />
+      <h1 className="text-3xl font-bold mb-4 text-center">Griot Airdrop</h1>
 
       {!address ? (
-        <Button onClick={connectWallet} className="bg-green-500 hover:bg-green-600">Connect Wallet</Button>
+        <button onClick={connectWallet} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
+          Connect Wallet
+        </button>
       ) : (
-        <div className="text-center space-y-4">
-          <p>Connected: {address}</p>
+        <div className="text-center space-y-4 max-w-xs">
+          <p className="break-words text-sm">Connected: {address}</p>
           {hasClaimed ? (
-            <p>You’ve already claimed your {claimAmount} Griot tokens.</p>
+            <p className="text-green-400 font-medium">
+              ✅ You’ve already claimed {claimAmount} Griot tokens.
+            </p>
           ) : (
-            <Button onClick={claimTokens} disabled={claiming} className="bg-green-500 hover:bg-green-600">
+            <button
+              onClick={claimTokens}
+              disabled={claiming}
+              className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-full"
+            >
               {claiming ? "Claiming..." : `Claim ${claimAmount || "your"} Griot Tokens`}
-            </Button>
+            </button>
           )}
 
           {isOwner && (
             <div className="mt-4">
-              <p>You are the contract owner. 🎯</p>
+              <p className="font-semibold">🎯 You are the contract owner.</p>
               <p className="text-sm">Monitor or manage your drop here.</p>
             </div>
           )}
