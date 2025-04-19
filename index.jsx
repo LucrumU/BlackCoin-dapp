@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
-const CONTRACT_ADDRESS = "0x72c...a258f"; // Fill in your actual deployed GriotAirdrop contract address
+const CONTRACT_ADDRESS = "0x72c...a258f"; // Replace with full GriotAirdrop contract address
 const ABI = [
   "function claim() external",
   "function hasClaimed(address) view returns (bool)",
@@ -21,6 +22,13 @@ export default function Home() {
   const [claimAmount, setClaimAmount] = useState(null);
 
   useEffect(() => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile && !window.ethereum) {
+      window.location.href = "https://metamask.app.link/dapp/blackcoin-dapp.netlify.app";
+    }
+  }, []);
+
+  useEffect(() => {
     if (signer && address && contract) {
       (async () => {
         const claimed = await contract.hasClaimed(address);
@@ -33,33 +41,19 @@ export default function Home() {
     }
   }, [signer, address, contract]);
 
-  useEffect(() => {
-    if (typeof window.ethereum !== "undefined") {
-      window.ethereum.on("accountsChanged", () => {
-        connectWallet();
-      });
-    }
-  }, []);
-
   const connectWallet = async () => {
-    if (typeof window.ethereum === "undefined") {
-      alert("Please install MetaMask or use the MetaMask browser on mobile.");
-      return;
-    }
     try {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
       const signer = provider.getSigner();
-      const userAddress = await signer.getAddress();
+      const address = await signer.getAddress();
       const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-
       setProvider(provider);
       setSigner(signer);
-      setAddress(userAddress);
+      setAddress(address);
       setContract(contract);
-    } catch (error) {
-      console.error("Wallet connection failed:", error);
-      alert("Failed to connect wallet. Please try again.");
+    } catch (err) {
+      alert("Failed to connect wallet: " + err.message);
     }
   };
 
@@ -77,37 +71,29 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-black text-green-500 p-6 flex flex-col items-center justify-center text-center space-y-6">
-      <h1 className="text-3xl md:text-4xl font-bold">🏛️ Griot Airdrop</h1>
+    <main className="flex flex-col items-center justify-center min-h-screen bg-black text-green-400 p-4">
+      <Image src="/black-bank-logo.png" alt="Griot Bank Logo" width={100} height={100} className="mb-4" />
+      <h1 className="text-2xl font-bold mb-4">Griot Airdrop</h1>
+
       {!address ? (
-        <Button className="bg-green-600 hover:bg-green-700" onClick={connectWallet}>
-          Connect Wallet
-        </Button>
+        <Button onClick={connectWallet} className="bg-green-500 hover:bg-green-600">Connect Wallet</Button>
       ) : (
-        <div className="space-y-4">
-          <p className="break-words">Connected: {address}</p>
+        <div className="text-center space-y-4">
+          <p>Connected: {address}</p>
           {hasClaimed ? (
-            <p>You’ve already claimed your {claimAmount} Griot tokens. 🎉</p>
+            <p>You’ve already claimed your {claimAmount} Griot tokens.</p>
           ) : (
-            <Button
-              className="bg-green-600 hover:bg-green-700 disabled:opacity-50"
-              disabled={claiming || hasClaimed === null}
-              onClick={claimTokens}
-            >
+            <Button onClick={claimTokens} disabled={claiming} className="bg-green-500 hover:bg-green-600">
               {claiming ? "Claiming..." : `Claim ${claimAmount || "your"} Griot Tokens`}
             </Button>
           )}
-          {isOwner && (
-            <p className="mt-4 text-sm">You are the contract owner. 🎯 Use this DApp to monitor airdrops and manage distributions.</p>
-          )}
-        </div>
-      )}
 
-      {!address && (
-        <div className="mt-6">
-          <p className="text-sm text-gray-300">
-            New user? Use the MetaMask app browser to access this site. If you don’t have MetaMask, get it from the App Store or Play Store.
-          </p>
+          {isOwner && (
+            <div className="mt-4">
+              <p>You are the contract owner. 🎯</p>
+              <p className="text-sm">Monitor or manage your drop here.</p>
+            </div>
+          )}
         </div>
       )}
     </main>
