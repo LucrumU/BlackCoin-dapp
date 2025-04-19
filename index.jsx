@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { ethers } from "ethers";
+import { Button } from "@/components/ui/button";
 
-const CONTRACT_ADDRESS = "0x72c...a258f"; // Replace with your full contract address
+const CONTRACT_ADDRESS = "0x72c...a258f"; // Fill in your actual deployed GriotAirdrop contract address
 const ABI = [
   "function claim() external",
   "function hasClaimed(address) view returns (bool)",
@@ -32,16 +33,34 @@ export default function Home() {
     }
   }, [signer, address, contract]);
 
+  useEffect(() => {
+    if (typeof window.ethereum !== "undefined") {
+      window.ethereum.on("accountsChanged", () => {
+        connectWallet();
+      });
+    }
+  }, []);
+
   const connectWallet = async () => {
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-    const signer = provider.getSigner();
-    const userAddress = await signer.getAddress();
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-    setProvider(provider);
-    setSigner(signer);
-    setAddress(userAddress);
-    setContract(contract);
+    if (typeof window.ethereum === "undefined") {
+      alert("Please install MetaMask or use the MetaMask browser on mobile.");
+      return;
+    }
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      const signer = provider.getSigner();
+      const userAddress = await signer.getAddress();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+      setProvider(provider);
+      setSigner(signer);
+      setAddress(userAddress);
+      setContract(contract);
+    } catch (error) {
+      console.error("Wallet connection failed:", error);
+      alert("Failed to connect wallet. Please try again.");
+    }
   };
 
   const claimTokens = async () => {
@@ -58,50 +77,39 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-green-500 flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-zinc-900 rounded-2xl p-6 shadow-xl">
-        <h1 className="text-3xl font-bold text-center mb-6">Griot Airdrop</h1>
+    <main className="min-h-screen bg-black text-green-500 p-6 flex flex-col items-center justify-center text-center space-y-6">
+      <h1 className="text-3xl md:text-4xl font-bold">🏛️ Griot Airdrop</h1>
+      {!address ? (
+        <Button className="bg-green-600 hover:bg-green-700" onClick={connectWallet}>
+          Connect Wallet
+        </Button>
+      ) : (
+        <div className="space-y-4">
+          <p className="break-words">Connected: {address}</p>
+          {hasClaimed ? (
+            <p>You’ve already claimed your {claimAmount} Griot tokens. 🎉</p>
+          ) : (
+            <Button
+              className="bg-green-600 hover:bg-green-700 disabled:opacity-50"
+              disabled={claiming || hasClaimed === null}
+              onClick={claimTokens}
+            >
+              {claiming ? "Claiming..." : `Claim ${claimAmount || "your"} Griot Tokens`}
+            </Button>
+          )}
+          {isOwner && (
+            <p className="mt-4 text-sm">You are the contract owner. 🎯 Use this DApp to monitor airdrops and manage distributions.</p>
+          )}
+        </div>
+      )}
 
-        {!address ? (
-          <button
-            onClick={connectWallet}
-            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-xl"
-          >
-            Connect Wallet
-          </button>
-        ) : (
-          <div className="space-y-4 text-center">
-            <p className="break-words text-xs text-green-300">
-              Connected: {address}
-            </p>
-
-            {hasClaimed ? (
-              <p className="text-yellow-400">
-                You’ve already claimed {claimAmount} Griot tokens.
-              </p>
-            ) : (
-              <button
-                onClick={claimTokens}
-                disabled={claiming}
-                className={`w-full ${
-                  claiming
-                    ? "bg-gray-600 cursor-not-allowed"
-                    : "bg-green-600 hover:bg-green-700"
-                } text-white font-bold py-2 px-4 rounded-xl`}
-              >
-                {claiming ? "Claiming..." : `Claim ${claimAmount || "your"} Griot Tokens`}
-              </button>
-            )}
-
-            {isOwner && (
-              <div className="mt-4 p-3 border border-green-400 rounded-xl text-sm text-green-300">
-                <p>You are the contract owner. ✯</p>
-                <p>Admin tools will go here in the future.</p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+      {!address && (
+        <div className="mt-6">
+          <p className="text-sm text-gray-300">
+            New user? Use the MetaMask app browser to access this site. If you don’t have MetaMask, get it from the App Store or Play Store.
+          </p>
+        </div>
+      )}
+    </main>
   );
 }
