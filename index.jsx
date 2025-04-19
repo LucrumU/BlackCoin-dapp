@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ethers } from "ethers";
 
-const CONTRACT_ADDRESS = "0x72c...a258f"; // Use full contract address
+const CONTRACT_ADDRESS = "0x72c...a258f"; // Replace with your full contract address
 const ABI = [
   "function claim() external",
   "function hasClaimed(address) view returns (bool)",
@@ -36,11 +36,11 @@ export default function Home() {
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     await provider.send("eth_requestAccounts", []);
     const signer = provider.getSigner();
-    const address = await signer.getAddress();
+    const userAddress = await signer.getAddress();
     const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
     setProvider(provider);
     setSigner(signer);
-    setAddress(address);
+    setAddress(userAddress);
     setContract(contract);
   };
 
@@ -58,43 +58,50 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-green-400 flex flex-col items-center justify-center p-4 space-y-6">
-      <h1 className="text-3xl font-bold text-center">Griot Airdrop</h1>
+    <div className="min-h-screen bg-black text-green-500 flex items-center justify-center px-4">
+      <div className="w-full max-w-md bg-zinc-900 rounded-2xl p-6 shadow-xl">
+        <h1 className="text-3xl font-bold text-center mb-6">Griot Airdrop</h1>
 
-      {!address ? (
-        <button
-          onClick={connectWallet}
-          className="bg-green-500 text-black px-6 py-3 rounded-2xl font-bold hover:bg-green-600 transition"
-        >
-          Connect Wallet
-        </button>
-      ) : (
-        <div className="w-full max-w-md bg-gray-900 rounded-2xl p-6 text-center space-y-4">
-          <p className="break-all text-sm">Connected: {address}</p>
-
-          {hasClaimed ? (
-            <p className="text-green-300">
-              You’ve already claimed your {claimAmount} Griot tokens.
+        {!address ? (
+          <button
+            onClick={connectWallet}
+            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-xl"
+          >
+            Connect Wallet
+          </button>
+        ) : (
+          <div className="space-y-4 text-center">
+            <p className="break-words text-xs text-green-300">
+              Connected: {address}
             </p>
-          ) : (
-            <button
-              onClick={claimTokens}
-              disabled={claiming}
-              className={`w-full py-3 rounded-xl text-black font-bold transition ${claiming ? "bg-gray-600" : "bg-green-500 hover:bg-green-600"}`}
-            >
-              {claiming ? "Claiming..." : `Claim ${claimAmount || "your"} Griot Tokens`}
-            </button>
-          )}
 
-          {isOwner && (
-            <div className="mt-4 p-3 bg-gray-800 rounded-xl border border-green-500">
-              <p className="text-xs text-green-400">
-                You are the contract owner. Monitor and manage the drop here in the future.
+            {hasClaimed ? (
+              <p className="text-yellow-400">
+                You’ve already claimed {claimAmount} Griot tokens.
               </p>
-            </div>
-          )}
-        </div>
-      )}
+            ) : (
+              <button
+                onClick={claimTokens}
+                disabled={claiming}
+                className={`w-full ${
+                  claiming
+                    ? "bg-gray-600 cursor-not-allowed"
+                    : "bg-green-600 hover:bg-green-700"
+                } text-white font-bold py-2 px-4 rounded-xl`}
+              >
+                {claiming ? "Claiming..." : `Claim ${claimAmount || "your"} Griot Tokens`}
+              </button>
+            )}
+
+            {isOwner && (
+              <div className="mt-4 p-3 border border-green-400 rounded-xl text-sm text-green-300">
+                <p>You are the contract owner. ✯</p>
+                <p>Admin tools will go here in the future.</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
