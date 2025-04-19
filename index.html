@@ -1,16 +1,62 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Griot Airdrop</title>
   <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    h1 {
+      margin-bottom: 30px;
+    }
+
+    button {
+      background-color: #1db954;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 10px;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #1ed760;
+    }
+
+    button:disabled {
+      background-color: #555;
+      cursor: not-allowed;
+    }
+
+    #status {
+      margin-top: 20px;
+      font-size: 14px;
+      color: #ccc;
+    }
+  </style>
 </head>
-<body style="font-family: Arial; text-align: center; padding: 40px;">
-  <h1>Griot Airdrop DApp</h1>
+<body>
+
+  <h1>🎉 Griot Airdrop</h1>
 
   <button id="connectButton">Connect Wallet</button>
-  <button id="claimButton" disabled>Claim Griot</button>
+  <button id="claimButton" disabled>Claim Griot Tokens</button>
 
-  <p id="status"></p>
+  <div id="status"></div>
 
   <script>
     const contractAddress = "0x72C1c729D5561b1126A72A2523Db3a27045a258F";
@@ -42,33 +88,44 @@
     connectButton.onclick = async () => {
       if (typeof window.ethereum !== "undefined") {
         web3 = new Web3(window.ethereum);
-        await window.ethereum.request({ method: "eth_requestAccounts" });
+        await ethereum.request({ method: 'eth_requestAccounts' });
         const accounts = await web3.eth.getAccounts();
         account = accounts[0];
         griotContract = new web3.eth.Contract(contractABI, contractAddress);
         statusText.textContent = "Wallet connected: " + account;
-        claimButton.disabled = false;
+        checkClaimStatus();
       } else {
-        statusText.textContent = "Please install MetaMask!";
+        statusText.textContent = "Please install MetaMask to use this DApp.";
       }
     };
 
-    claimButton.onclick = async () => {
+    async function checkClaimStatus() {
       try {
-        const hasClaimed = await griotContract.methods.hasClaimed().call({ from: account });
-        if (hasClaimed) {
-          statusText.textContent = "You've already claimed your Griot.";
-          return;
+        const claimed = await griotContract.methods.hasClaimed().call({ from: account });
+        if (claimed) {
+          claimButton.disabled = true;
+          statusText.textContent = "You already claimed your Griot 🎁";
+        } else {
+          claimButton.disabled = false;
         }
-
-        statusText.textContent = "Claiming...";
-        await griotContract.methods.claim().send({ from: account });
-        statusText.textContent = "Success! Griot claimed.";
       } catch (error) {
         console.error(error);
-        statusText.textContent = "Error: " + (error.message || "Transaction failed.");
+        statusText.textContent = "Could not check claim status.";
+      }
+    }
+
+    claimButton.onclick = async () => {
+      statusText.textContent = "Claiming your Griot...";
+      try {
+        await griotContract.methods.claim().send({ from: account });
+        statusText.textContent = "✅ Griot claimed! Check your wallet.";
+        claimButton.disabled = true;
+      } catch (error) {
+        console.error(error);
+        statusText.textContent = "❌ Claim failed: " + (error.message || "unknown error");
       }
     };
   </script>
+
 </body>
 </html>
