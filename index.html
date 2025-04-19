@@ -1,131 +1,116 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Griot Airdrop</title>
-  <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
-      color: white;
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background-color: #000;
+      color: #0f0;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
+      padding: 20px;
     }
-
     h1 {
-      margin-bottom: 30px;
+      font-size: 2rem;
+      margin-bottom: 1rem;
     }
-
     button {
-      background-color: #1db954;
-      color: white;
+      background-color: #0f0;
+      color: #000;
       border: none;
       padding: 12px 24px;
-      font-size: 16px;
+      font-size: 1rem;
       border-radius: 8px;
       cursor: pointer;
       margin: 10px;
-      transition: background 0.3s ease;
+      width: 100%;
+      max-width: 300px;
     }
-
-    button:hover {
-      background-color: #1ed760;
-    }
-
     button:disabled {
-      background-color: #555;
+      background-color: #444;
+      color: #888;
       cursor: not-allowed;
     }
-
     #status {
-      margin-top: 20px;
-      font-size: 14px;
-      color: #ccc;
+      margin: 20px;
+      font-size: 1rem;
+      text-align: center;
+    }
+    @media (max-width: 600px) {
+      h1 { font-size: 1.5rem; }
     }
   </style>
 </head>
 <body>
-
-  <h1>🎉 Griot Airdrop</h1>
-
+  <h1>🎤 Griot Airdrop</h1>
+  <div id="status">Connect your wallet to check eligibility.</div>
   <button id="connectButton">Connect Wallet</button>
-  <button id="claimButton" disabled>Claim Griot Tokens</button>
+  <button id="claimButton" disabled>Claim Tokens</button>
 
-  <div id="status"></div>
-
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script>
-    const contractAddress = "0x72C1c729D5561b1126A72A2523Db3a27045a258F";
-    const contractABI = [
-      {
-        "inputs": [],
-        "name": "claim",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [],
-        "name": "hasClaimed",
-        "outputs": [{"internalType": "bool","name":"","type": "bool"}],
-        "stateMutability": "view",
-        "type": "function"
-      }
+    const contractAddress = '0xYourGriotAirdropContractAddress';
+    const abi = [
+      'function hasClaimed(address) view returns (bool)',
+      'function claim() public',
+      'function claimAmount() view returns (uint256)'
     ];
 
-    let web3;
-    let account;
-    let griotContract;
-
-    const connectButton = document.getElementById("connectButton");
-    const claimButton = document.getElementById("claimButton");
-    const statusText = document.getElementById("status");
+    const connectButton = document.getElementById('connectButton');
+    const claimButton = document.getElementById('claimButton');
+    const status = document.getElementById('status');
+    let provider, signer, contract, userAddress;
 
     connectButton.onclick = async () => {
-      if (typeof window.ethereum !== "undefined") {
-        web3 = new Web3(window.ethereum);
-        await ethereum.request({ method: 'eth_requestAccounts' });
-        const accounts = await web3.eth.getAccounts();
-        account = accounts[0];
-        griotContract = new web3.eth.Contract(contractABI, contractAddress);
-        statusText.textContent = "Wallet connected: " + account;
-        checkClaimStatus();
-      } else {
-        statusText.textContent = "Please install MetaMask to use this DApp.";
+      if (typeof window.ethereum === 'undefined') {
+        return alert('MetaMask is required!');
       }
+
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send('eth_requestAccounts', []);
+      signer = provider.getSigner();
+      userAddress = await signer.getAddress();
+
+      contract = new ethers.Contract(contractAddress, abi, signer);
+
+      status.innerText = `Connected: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
+      checkEligibility();
     };
 
-    async function checkClaimStatus() {
+    async function checkEligibility() {
       try {
-        const claimed = await griotContract.methods.hasClaimed().call({ from: account });
+        const claimed = await contract.hasClaimed(userAddress);
         if (claimed) {
           claimButton.disabled = true;
-          statusText.textContent = "You already claimed your Griot 🎁";
+          status.innerText = 'You already claimed your Griot tokens. ✊🏾';
         } else {
           claimButton.disabled = false;
+          status.innerText = 'You are eligible to claim! 🎉';
         }
-      } catch (error) {
-        console.error(error);
-        statusText.textContent = "Could not check claim status.";
+      } catch (e) {
+        console.error(e);
+        status.innerText = 'Could not verify claim eligibility.';
       }
     }
 
     claimButton.onclick = async () => {
-      statusText.textContent = "Claiming your Griot...";
       try {
-        await griotContract.methods.claim().send({ from: account });
-        statusText.textContent = "✅ Griot claimed! Check your wallet.";
+        const tx = await contract.claim();
+        status.innerText = 'Transaction sent. Waiting for confirmation...';
+        await tx.wait();
+        status.innerText = 'Success! Griot tokens claimed! 🎁';
         claimButton.disabled = true;
-      } catch (error) {
-        console.error(error);
-        statusText.textContent = "❌ Claim failed: " + (error.message || "unknown error");
+      } catch (e) {
+        console.error(e);
+        status.innerText = 'Claim failed. Check console for details.';
       }
     };
   </script>
-
 </body>
 </html>
