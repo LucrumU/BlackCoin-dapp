@@ -1,65 +1,71 @@
-import { useEffect, useState } from "react";
-import { ethers } from "ethers";
-import Image from "next/image";
+import { useState } from "react";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { FaArrowsAltH } from "react-icons/fa";
 
-export default function Home() {
-  const [walletConnected, setWalletConnected] = useState(false);
-  const [address, setAddress] = useState("");
+export default function DEXDashboard() {
+  const [inputAmount, setInputAmount] = useState(0);
+  const [outputAmount, setOutputAmount] = useState(0);
+  const [tokenIn, setTokenIn] = useState("GRIOT");
+  const [tokenOut, setTokenOut] = useState("ETH");
 
-  const connectWallet = async () => {
-    if (window.ethereum) {
-      try {
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const signer = await provider.getSigner();
-        const userAddress = await signer.getAddress();
-        setWalletConnected(true);
-        setAddress(userAddress);
-      } catch (err) {
-        alert("Wallet connection failed.");
-      }
-    } else {
-      alert("Please install MetaMask!");
-    }
+  const handleSwap = () => {
+    // Placeholder logic — real contract interaction will go here
+    setOutputAmount(inputAmount * 0.002); // Example rate
   };
 
-  useEffect(() => {
-    const checkIfWalletConnected = async () => {
-      if (window.ethereum) {
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const accounts = await provider.send("eth_accounts", []);
-        if (accounts.length > 0) {
-          setWalletConnected(true);
-          setAddress(accounts[0]);
-        }
-      }
-    };
-    checkIfWalletConnected();
-  }, []);
+  const switchTokens = () => {
+    const temp = tokenIn;
+    setTokenIn(tokenOut);
+    setTokenOut(temp);
+    setInputAmount(0);
+    setOutputAmount(0);
+  };
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen bg-black text-green-400 p-4 text-center">
-      <Image
-        src="/black-bank-logo.png"
-        alt="Black Bank Logo"
-        width={120}
-        height={120}
-        className="mb-6"
-      />
-      <h1 className="text-3xl font-bold mb-4">Welcome to BlackCoin Music</h1>
-      <p className="max-w-md mb-6">
-        Discover a new kind of platform where artists own their music, fans support directly, and every click counts.
-      </p>
+    <div className="min-h-screen bg-black text-white p-4 font-sans">
+      <div className="max-w-md mx-auto py-10">
+        <h1 className="text-3xl font-bold text-center text-green-500 mb-6">BlackCoin DEX</h1>
+        <ConnectButton />
 
-      {!walletConnected ? (
-        <button
-          onClick={connectWallet}
-          className="bg-green-500 hover:bg-green-600 px-6 py-2 rounded-full font-semibold"
-        >
-          Connect Wallet
-        </button>
-      ) : (
-        <p className="text-sm">Wallet connected: {address}</p>
-      )}
-    </main>
+        <div className="bg-zinc-900 rounded-2xl shadow-xl p-6 mt-8">
+          <div className="mb-4">
+            <label className="block mb-1 text-sm">From ({tokenIn})</label>
+            <input
+              type="number"
+              className="w-full rounded-xl px-4 py-2 bg-zinc-800 text-white focus:outline-none"
+              value={inputAmount}
+              onChange={(e) => setInputAmount(e.target.value)}
+            />
+          </div>
+
+          <div className="flex justify-center my-4">
+            <button onClick={switchTokens} className="text-green-500 text-2xl">
+              <FaArrowsAltH />
+            </button>
+          </div>
+
+          <div className="mb-4">
+            <label className="block mb-1 text-sm">To ({tokenOut})</label>
+            <input
+              type="number"
+              readOnly
+              className="w-full rounded-xl px-4 py-2 bg-zinc-800 text-white focus:outline-none"
+              value={outputAmount}
+            />
+          </div>
+
+          <button
+            onClick={handleSwap}
+            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-xl mt-4"
+          >
+            Swap
+          </button>
+        </div>
+
+        <div className="text-center text-sm text-gray-400 mt-6">
+          <p>Griot Token to ETH swap is simulated. Real interaction coming next.</p>
+        </div>
+      </div>
+    </div>
   );
 }
